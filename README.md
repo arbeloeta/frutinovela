@@ -12,7 +12,8 @@ GitHub Actions (gratis) + Cloudflare R2 (gratis) + Telegram (gratis).
    sin API key), con una voz distinta por personaje.
 3. **compose_video.py** — arma el video vertical con `ffmpeg`: fondo +
    personaje animado + subtítulos quemados + audio.
-4. **upload.py** — sube el resultado a Cloudflare R2.
+4. **save_to_repo.py** — guarda el video final en `videos/YYYY-MM-DD.mp4`
+   dentro del propio repo (el workflow hace el `git commit` + `push`).
 5. **notify.py** — te manda el video directo a Telegram con el título
    y los hashtags ya escritos, listo para pegar y publicar.
 
@@ -27,9 +28,18 @@ En **Settings → Secrets and variables → Actions** de tu repo, agrega:
 | Secret | De dónde sale |
 |---|---|
 | `ANTHROPIC_API_KEY` | console.anthropic.com |
-| `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | dashboard de Cloudflare R2 |
 | `TELEGRAM_BOT_TOKEN` | @BotFather en Telegram |
 | `TELEGRAM_CHAT_ID` | `https://api.telegram.org/bot<token>/getUpdates` después de escribirle a tu bot una vez |
+
+No necesitas ninguna cuenta de nube: el video se guarda directo en la
+carpeta `videos/` de este mismo repo (el workflow ya tiene permiso de
+`contents: write` para hacer el commit automáticamente).
+
+> **Nota sobre el tamaño del repo**: cada capítulo pesa pocos MB (video
+> corto, comprimido en h264). GitHub empieza a advertir sobre repos que
+> pasan de ~1GB, así que si algún día acumulas cientos de capítulos,
+> puedes mover los videos viejos a Git LFS o borrarlos del historial.
+> Para el uso normal (unos meses de capítulos diarios) no es un problema.
 
 ## Assets que tienes que poner tú (opcional, mejora mucho el resultado)
 
@@ -54,5 +64,9 @@ real a `/v2/post/publish/video/init/`.
 
 ## Costos
 
-$0. Todo corre dentro de las capas gratuitas de GitHub Actions
-(minutos ilimitados en repo público), Cloudflare R2 (10GB) y Telegram.
+Prácticamente $0. GitHub Actions (minutos ilimitados en repo público),
+el almacenamiento del propio repo, y Telegram son gratis. Lo único con
+costo real es la llamada a la API de Anthropic para el guion, que sale
+en centavos por capítulo (ver la conversación de configuración para el
+detalle, o cambia `generate_script.py` a Gemini/Groq si quieres $0
+absoluto).
