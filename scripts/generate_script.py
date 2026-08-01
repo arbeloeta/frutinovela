@@ -95,33 +95,33 @@ Entre 6 y 10 escenas.
 El JSON debe ser PERFECTAMENTE válido.
 """
 
-  respuesta = cliente.models.generate_content(
-    model=MODELO,
-    contents=prompt,
-    config=types.GenerateContentConfig(
-        system_instruction=SYSTEM_PROMPT,
-        response_mime_type="application/json",
-        temperature=0.6,
-        max_output_tokens=2048,
-    ),
-)
+    respuesta = cliente.models.generate_content(
+        model=MODELO,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            system_instruction=SYSTEM_PROMPT,
+            response_mime_type="application/json",
+            temperature=0.6,
+            max_output_tokens=2048,
+        ),
+    )
 
-print("=== RESPUESTA COMPLETA ===")
-print(respuesta)
-print("==========================")
+    print("=== RESPUESTA COMPLETA ===")
+    print(respuesta)
+    print("==========================")
 
-texto = ""
+    texto = ""
 
-try:
-    for part in respuesta.candidates[0].content.parts:
-        if hasattr(part, "text") and part.text:
-            texto += part.text
-except Exception:
-    texto = respuesta.text or ""
+    try:
+        for part in respuesta.candidates[0].content.parts:
+            if hasattr(part, "text") and part.text:
+                texto += part.text
+    except Exception:
+        texto = respuesta.text or ""
 
-print("=== TEXTO ===")
-print(repr(texto))
-print("=============")
+    print("=== TEXTO ===")
+    print(repr(texto))
+    print("=============")
 
     if not texto:
         raise Exception("Gemini devolvió una respuesta vacía.")
@@ -130,7 +130,6 @@ print("=============")
         return json.loads(texto)
 
     except Exception as e:
-
         with open(
             OUTPUT_DIR / "respuesta_gemini.txt",
             "w",
