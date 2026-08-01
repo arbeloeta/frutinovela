@@ -1,5 +1,6 @@
 """
-Genera el guion de un capítulo de "Frutinovela" y lo guarda como JSON.
+Genera el guion de un capítulo de "Frutinovela" usando Gemini (gratis,
+sin tarjeta) y lo guarda como JSON.
 Salida: output/guion.json
 """
 import json
@@ -7,10 +8,17 @@ import os
 import random
 from pathlib import Path
 
-import anthropic
+from google import genai
+from google.genai import types
 
 OUTPUT_DIR = Path("output")
 OUTPUT_DIR.mkdir(exist_ok=True)
+
+# NOTA: Gemini 2.5 Flash está en el tier gratis (10 req/min, 250 req/día
+# al momento de escribir esto). Google anunció que se retira el 16 de
+# octubre de 2026 -> si esta fecha ya pasó, cambia el string de abajo
+# por el modelo Flash gratuito vigente (revisa ai.google.dev/pricing).
+MODELO = "gemini-2.5-flash"
 
 # Personajes disponibles. Cada uno tiene un nombre y una "voz" que se
 # asignará luego en tts.py (para que cada fruta suene distinta).
@@ -55,29 +63,28 @@ Debe haber entre 6 y 10 escenas."""
 
 
 def generar_guion() -> dict:
-    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    cliente = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 
     tema = random.choice(TEMAS)
     personajes_txt = "\n".join(f"- {p}" for p in PERSONAJES)
 
-    mensaje = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=1500,
-        system=SYSTEM_PROMPT,
-        messages=[
-            {
-                "role": "user",
-                "content": (
-                    f"Personajes disponibles:\n{personajes_txt}\n\n"
-                    f"Tema del capítulo de hoy: {tema}.\n"
-                    "Usa 3 o 4 personajes de la lista, no todos."
-                ),
-            }
-        ],
+    prompt = (
+        f"Personajes disponibles:\n{personajes_txt}\n\n"
+        f"Tema del capítulo de hoy: {tema}.\n"
+        "Usa 3 o 4 personajes de la lista, no todos."
     )
 
-    texto = mensaje.content[0].text.strip()
-    # Por si el modelo agrega backticks a pesar de la instrucción
+    respuesta = cliente.models.generate_content(
+        model=MODELO,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            system_instruction=SYSTEM_PROMPT,
+            response_mime_type="application/json",
+            max_output_tokens=1500,
+        ),
+    )
+
+    texto = respuesta.text.strip()
     texto = texto.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
     guion = json.loads(texto)
     return guion
