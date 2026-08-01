@@ -95,28 +95,33 @@ Entre 6 y 10 escenas.
 El JSON debe ser PERFECTAMENTE válido.
 """
 
-    respuesta = cliente.models.generate_content(
-        model=MODELO,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
-            response_mime_type="application/json",
-            temperature=1,
-            max_output_tokens=800,
-        ),
-    )
+  respuesta = cliente.models.generate_content(
+    model=MODELO,
+    contents=prompt,
+    config=types.GenerateContentConfig(
+        system_instruction=SYSTEM_PROMPT,
+        response_mime_type="application/json",
+        temperature=0.6,
+        max_output_tokens=2048,
+    ),
+)
 
+print("=== RESPUESTA COMPLETA ===")
+print(respuesta)
+print("==========================")
+
+texto = ""
+
+try:
+    for part in respuesta.candidates[0].content.parts:
+        if hasattr(part, "text") and part.text:
+            texto += part.text
+except Exception:
     texto = respuesta.text or ""
 
-    texto = (
-        texto.replace("```json", "")
-        .replace("```", "")
-        .strip()
-    )
-
-    print("\n===== RESPUESTA GEMINI =====\n")
-    print(texto)
-    print("\n============================\n")
+print("=== TEXTO ===")
+print(repr(texto))
+print("=============")
 
     if not texto:
         raise Exception("Gemini devolvió una respuesta vacía.")
