@@ -18,7 +18,7 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 # al momento de escribir esto). Google anunció que se retira el 16 de
 # octubre de 2026 -> si esta fecha ya pasó, cambia el string de abajo
 # por el modelo Flash gratuito vigente (revisa ai.google.dev/pricing).
-MODELO = "gemini-2.5-flash-lite"
+MODELO = "gemini-3.5-flash"
 
 # Personajes disponibles. Cada uno tiene un nombre y una "voz" que se
 # asignará luego en tts.py (para que cada fruta suene distinta).
