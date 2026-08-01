@@ -37,12 +37,19 @@ ESTILOS_POR_EMOCION = {
     "calma": {"rate": "-5%", "pitch": "0Hz"},
 }
 
-
-async def generar_audio_escena(texto: str, voz: str, estilo: dict, salida: Path):
+async def generar_audio_escena(dialogo, voz, estilo, salida):
+    # Aseguramos que si la tasa viene como '0%', tenga el signo '+'
+    # O si usas un número entero para la velocidad: rate_str = f"{estilo.get('rate', 0):+d}%"
+    
     comunicador = edge_tts.Communicate(
-        texto, voz, rate=estilo["rate"], pitch=estilo["pitch"]
+        text=dialogo,
+        voice=voz,
+        rate="+0%",   # <-- IMPORTANTE: Cambiado de '0%' a '+0%'
+        pitch="+0Hz", # Si usas pitch, también requiere signo ('+0Hz' o '-0Hz')
+        volume="+0%"
     )
-    await comunicador.save(str(salida))
+    
+    await comunicador.save(salida)
 
 
 def duracion_audio_segundos(path: Path) -> float:
