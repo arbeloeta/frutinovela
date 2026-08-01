@@ -10,6 +10,8 @@ jobs:
   generar-y-publicar:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: write   # necesario para que el bot pueda hacer commit/push
 
     steps:
       - name: Checkout del repo
@@ -37,13 +39,16 @@ jobs:
       - name: 3. Componer el video con ffmpeg
         run: python scripts/compose_video.py
 
-      - name: 4. Subir video final a Cloudflare R2
-        env:
-          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          R2_BUCKET: ${{ secrets.R2_BUCKET }}
-        run: python scripts/upload.py
+      - name: 4. Guardar el video final en videos/ del repo
+        run: python scripts/save_to_repo.py
+
+      - name: 4b. Commitear y subir el video al repo
+        run: |
+          git config user.name "frutinovela-bot"
+          git config user.email "actions@github.com"
+          git add videos/
+          git commit -m "Capitulo del $(date -u +%Y-%m-%d)" || echo "Nada nuevo que commitear"
+          git push
 
       - name: 5. Avisar por Telegram que el video ya está listo
         env:
