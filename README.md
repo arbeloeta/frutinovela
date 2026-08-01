@@ -6,8 +6,8 @@ GitHub Actions (gratis) + Cloudflare R2 (gratis) + Telegram (gratis).
 
 ## Cómo funciona
 
-1. **generate_script.py** — le pide a Claude un guion de 6-10 escenas
-   en JSON (personaje, diálogo, emoción, fondo).
+1. **generate_script.py** — le pide a Gemini (gratis) un guion de 6-10
+   escenas en JSON (personaje, diálogo, emoción, fondo).
 2. **tts.py** — convierte cada línea en audio con `edge-tts` (gratis,
    sin API key), con una voz distinta por personaje.
 3. **compose_video.py** — arma el video vertical con `ffmpeg`: fondo +
@@ -27,7 +27,7 @@ En **Settings → Secrets and variables → Actions** de tu repo, agrega:
 
 | Secret | De dónde sale |
 |---|---|
-| `ANTHROPIC_API_KEY` | console.anthropic.com |
+| `GEMINI_API_KEY` | aistudio.google.com/apikey (gratis, sin tarjeta) |
 | `TELEGRAM_BOT_TOKEN` | @BotFather en Telegram |
 | `TELEGRAM_CHAT_ID` | `https://api.telegram.org/bot<token>/getUpdates` después de escribirle a tu bot una vez |
 
@@ -64,9 +64,8 @@ real a `/v2/post/publish/video/init/`.
 
 ## Costos
 
-Prácticamente $0. GitHub Actions (minutos ilimitados en repo público),
-el almacenamiento del propio repo, y Telegram son gratis. Lo único con
-costo real es la llamada a la API de Anthropic para el guion, que sale
-en centavos por capítulo (ver la conversación de configuración para el
-detalle, o cambia `generate_script.py` a Gemini/Groq si quieres $0
-absoluto).
+$0 real. GitHub Actions (minutos ilimitados en repo público), el
+almacenamiento del propio repo, Telegram y Gemini (tier gratis, sin
+tarjeta) no cuestan nada. El único límite es la cuota diaria/por minuto
+de Gemini gratis (de sobra para 1-3 videos al día); si algún día
+necesitas más volumen, se sube de tier o se reparte entre varias keys.
