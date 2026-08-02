@@ -1,8 +1,8 @@
 """
-Genera el guion de un capítulo de "Frutinovela" usando Gemini.
+Genera el guion de un capítulo de "Frutinovela" usando Gemini (gratis,
+sin tarjeta) y lo guarda como JSON.
 Salida: output/guion.json
 """
-
 import json
 import os
 import random
@@ -14,14 +14,21 @@ from google.genai import types
 OUTPUT_DIR = Path("output")
 OUTPUT_DIR.mkdir(exist_ok=True)
 
+# NOTA: Gemini 2.5/3.5 Flash está en el tier gratis (10 req/min, 250 req/día
+# al momento de escribir esto). Si cambias de modelo, revisa que siga
+# gratis en ai.google.dev/pricing.
 MODELO = "gemini-3.5-flash"
 
+# Personajes disponibles. Cada uno tiene un nombre y una "voz" que se
+# asignará luego en tts.py (para que cada fruta suene distinta).
 PERSONAJES = [
     "Manzana Roja (dramática, celosa)",
     "Sandía (calmada, sabia, tía del pueblo)",
     "Piña (galán, un poco creído)",
     "Uva Morada (chismosa, mejor amiga)",
     "Limón (villano ácido y rencoroso)",
+    "Coco (padre estricto, dueño del mercado)",
+    "Frambuesa (ingenua, enamorada en secreto)",
 ]
 
 TEMAS = [
@@ -30,70 +37,51 @@ TEMAS = [
     "una herencia que desaparece justo antes de leerse el testamento",
     "un regreso inesperado de alguien que todos creían compostado",
     "una traición descubierta en la fiesta de la cosecha",
+    "un padre que prohíbe un romance y termina siendo el verdadero culpable",
+    "una confesión de amor interrumpida por la llegada de la policía del mercado",
 ]
 
-SYSTEM_PROMPT = """
-Eres un guionista experto en vídeos virales de TikTok.
+# IMPORTANTE: el nombre de "personaje" en el guion debe salir EXACTO
+# como aparece en PERSONAJES (con el paréntesis incluido), porque
+# tts.py y compose_video.py buscan la voz/color por esa clave exacta.
+SYSTEM_PROMPT = f"""Eres guionista de telenovelas latinoamericanas exageradas,
+pero todos los personajes son frutas antropomorfizadas. Tono: dramático,
+con música de fondo imaginaria, giros absurdos y un cliffhanger fuerte al
+final. Cada capítulo dura entre 30 y 45 segundos hablados.
 
-IMPORTANTE:
-- Responde ÚNICAMENTE con JSON válido.
-- No escribas markdown.
-- No escribas ```json.
-- No escribas explicaciones.
-- No escribas texto antes ni después del JSON.
+Los personajes disponibles son EXACTAMENTE estos (copia el string tal
+cual, con paréntesis incluido, en el campo "personaje"):
+{chr(10).join(f"- {p}" for p in PERSONAJES)}
 
-Formato EXACTO:
+Responde ÚNICAMENTE con JSON válido, sin texto adicional ni backticks,
+con esta forma exacta:
 
-{
-  "titulo": "string",
-  "hashtags": ["#frutinovela", "#tiktok"],
+{{
+  "titulo": "string, máximo 60 caracteres, con gancho para TikTok",
+  "hashtags": ["#frutinovela", "#..."],
   "escenas": [
-    {
-      "personaje": "string",
-      "emocion": "furia",
-      "dialogo": "string",
-      "fondo": "mercado"
-    }
+    {{
+      "personaje": "nombre exacto de la lista de personajes de arriba",
+      "emocion": "una palabra: furia | llanto | sorpresa | picardia | calma",
+      "dialogo": "línea de diálogo, máximo 20 palabras, en español neutro",
+      "fondo": "mercado | cocina | jardin | boda | tribunal"
+    }}
   ]
-}
+}}
 
-Reglas:
-- Exactamente 6 escenas.
-- Cada diálogo debe tener máximo 12 palabras.
-- Usa únicamente 3 personajes.
-- El título máximo 45 caracteres.
-- Solo JSON válido.
-"""
+Debe haber entre 5 y 7 escenas (no más, para no quedarte sin espacio
+de respuesta). Sé conciso."""
 
 
-def generar_guion():
-
-    api_key = os.getenv("GEMINI_API_KEY")
-
-    if not api_key:
-        raise Exception("No existe GEMINI_API_KEY")
-
-    cliente = genai.Client(api_key=api_key)
+def generar_guion() -> dict:
+    cliente = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 
     tema = random.choice(TEMAS)
 
-    personajes = "\n".join(f"- {p}" for p in PERSONAJES)
-
-    prompt = f"""
-Personajes disponibles:
-
-{personajes}
-
-Tema:
-
-{tema}
-
-Usa únicamente 3 o 4 personajes.
-
-Entre 6 y 10 escenas.
-
-El JSON debe ser PERFECTAMENTE válido.
-"""
+    prompt = (
+        f"Tema del capítulo de hoy: {tema}.\n"
+        "Usa 3 o 4 personajes de la lista, no todos."
+    )
 
     respuesta = cliente.models.generate_content(
         model=MODELO,
@@ -101,62 +89,40 @@ El JSON debe ser PERFECTAMENTE válido.
         config=types.GenerateContentConfig(
             system_instruction=SYSTEM_PROMPT,
             response_mime_type="application/json",
-            temperature=0.6,
-            max_output_tokens=2048,
+            max_output_tokens=8192,  # antes 1500: se lo comía el "thinking"
         ),
     )
 
-    print("=== RESPUESTA COMPLETA ===")
-    print(respuesta)
-    print("==========================")
+    # Guardamos SIEMPRE la respuesta cruda, para poder inspeccionarla
+    # si algo sale mal (JSON cortado, etc.)
+    with open(OUTPUT_DIR / "respuesta_gemini.txt", "w", encoding="utf-8") as f:
+        f.write(str(respuesta))
 
-    texto = ""
-
-    try:
-        for part in respuesta.candidates[0].content.parts:
-            if hasattr(part, "text") and part.text:
-                texto += part.text
-    except Exception:
-        texto = respuesta.text or ""
-
-    print("=== TEXTO ===")
-    print(repr(texto))
-    print("=============")
-
-    if not texto:
-        raise Exception("Gemini devolvió una respuesta vacía.")
-
-    try:
-        return json.loads(texto)
-
-    except Exception as e:
-        with open(
-            OUTPUT_DIR / "respuesta_gemini.txt",
-            "w",
-            encoding="utf-8",
-        ) as f:
-            f.write(texto)
-
+    if respuesta.candidates[0].finish_reason.name != "STOP":
         raise Exception(
-            f"JSON inválido.\nSe ha guardado la respuesta en output/respuesta_gemini.txt\n\n{e}"
+            f"La respuesta no terminó normalmente (finish_reason="
+            f"{respuesta.candidates[0].finish_reason.name}). "
+            "Se guardó en output/respuesta_gemini.txt para revisar."
         )
+
+    texto = respuesta.text.strip()
+    texto = texto.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+
+    try:
+        guion = json.loads(texto)
+    except json.JSONDecodeError as error:
+        raise Exception(
+            f"JSON inválido: {error}. "
+            "Se guardó la respuesta cruda en output/respuesta_gemini.txt"
+        ) from error
+
+    return guion
 
 
 if __name__ == "__main__":
-
     guion = generar_guion()
-
-    with open(
-        OUTPUT_DIR / "guion.json",
-        "w",
-        encoding="utf-8",
-    ) as f:
-        json.dump(
-            guion,
-            f,
-            ensure_ascii=False,
-            indent=2,
-        )
+    with open(OUTPUT_DIR / "guion.json", "w", encoding="utf-8") as f:
+        json.dump(guion, f, ensure_ascii=False, indent=2)
 
     print(f"Guion generado: {guion['titulo']}")
-    print(f"Escenas: {len(guion['escenas'])}")
+    print(f"{len(guion['escenas'])} escenas")
