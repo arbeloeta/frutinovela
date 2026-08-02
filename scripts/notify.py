@@ -36,6 +36,9 @@ def main():
             timeout=120,
         )
 
+    if not resp.ok:
+        print(f"Telegram respondió {resp.status_code}: {resp.text}")
+
     resp.raise_for_status()
     print("Enviado a Telegram correctamente.")
 
