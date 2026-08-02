@@ -6,6 +6,10 @@ on:
     - cron: "0 14 * * *"
   workflow_dispatch: {}   # te permite dispararlo manualmente desde el tab Actions
 
+concurrency:
+  group: frutinovela-main
+  cancel-in-progress: false   # si ya hay una corriendo, la siguiente espera en vez de chocar
+
 jobs:
   generar-y-publicar:
     runs-on: ubuntu-latest
@@ -48,6 +52,7 @@ jobs:
           git config user.email "actions@github.com"
           git add videos/
           git commit -m "Capitulo del $(date -u +%Y-%m-%d)" || echo "Nada nuevo que commitear"
+          git pull --rebase origin main
           git push
 
       - name: 5. Avisar por Telegram que el video ya está listo
